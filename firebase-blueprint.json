@@ -1,0 +1,174 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "avatar": { "type": "string" },
+        "status": { "type": "string", "enum": ["online", "offline", "idle", "dnd"] },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "username", "displayName"]
+    },
+    "FriendRequest": {
+      "title": "Friend Request",
+      "description": "Friend request between two users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "senderId", "receiverId", "status", "createdAt"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Established friendship.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user1Id": { "type": "string" },
+        "user2Id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "user1Id", "user2Id", "createdAt"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "Group/Server information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "avatar": { "type": "string" },
+        "banner": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId", "createdAt"]
+    },
+    "GroupMember": {
+      "title": "Group Member",
+      "description": "User membership in a group.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "groupId": { "type": "string" },
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "admin", "member"] },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "groupId", "userId", "role", "joinedAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Channel category within a group.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "groupId": { "type": "string" },
+        "name": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "groupId", "name", "order", "createdAt"]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "Text or Voice channel.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "groupId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "voice"] },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "groupId", "name", "type", "order", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message in a channel or DM.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "channelId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "editedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "channelId", "senderId", "createdAt"]
+    },
+    "WebRTCSignal": {
+      "title": "WebRTC Signal",
+      "description": "WebRTC signaling messages.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "targetId": { "type": "string" },
+        "type": { "type": "string", "enum": ["offer", "answer", "candidate", "join", "leave", "pulse"] },
+        "data": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "roomId", "senderId", "type", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/friend_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Friend requests"
+    },
+    "/friends/{friendshipId}": {
+      "schema": { "$ref": "#/entities/Friendship" },
+      "description": "Established friendships"
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/Group" },
+      "description": "Groups/Servers"
+    },
+    "/groups/{groupId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/GroupMember" },
+      "description": "Members of a group"
+    },
+    "/groups/{groupId}/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Channel categories"
+    },
+    "/groups/{groupId}/channels/{channelId}": {
+      "schema": { "$ref": "#/entities/Channel" },
+      "description": "Channels in a group"
+    },
+    "/channels/{channelId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages in a channel (group or dm)"
+    },
+    "/webrtc_rooms/{roomId}": {
+      "schema": { "type": "object", "properties": { "createdAt": { "type": "string", "format": "date-time" } } },
+      "description": "WebRTC room metadata"
+    },
+    "/webrtc_rooms/{roomId}/signals/{signalId}": {
+      "schema": { "$ref": "#/entities/WebRTCSignal" },
+      "description": "WebRTC signals for a room"
+    }
+  }
+}

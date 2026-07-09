@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives
+    function isSignedIn() { return request.auth != null; }
+    function existing() { return resource.data; }
+    function incoming() { return request.resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // Users Collection
+    match /users/{userId} {
+      function isValidUser() {
+        return incoming().keys().hasAll(['username', 'displayName']) &&
+               incoming().username is string && incoming().username.size() > 0 && incoming().username.size() <= 32 &&
+               incoming().displayName is string && incoming().displayName.size() > 0 && incoming().displayName.size() <= 64;
+      }
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser();
+      allow update: if isSignedIn() && request.auth.uid == userId && 
+                    (!incoming().keys().hasAny(['userId', 'createdAt'])); // Prevent modifying immutable fields
+    }
+
+    // Friend Requests
+    match /friend_requests/{requestId} {
+      function isParticipant() { return request.auth.uid == existing().senderId || request.auth.uid == existing().receiverId; }
+      allow read: if isSignedIn() && isParticipant();
+      allow create: if isSignedIn() && incoming().senderId == request.auth.uid;
+      allow update: if isSignedIn() && isParticipant();
+      allow delete: if isSignedIn() && isParticipant();
+    }
+
+    // Friends
+    match /friends/{friendshipId} {
+      function isFriend() { return request.auth.uid == existing().user1Id || request.auth.uid == existing().user2Id; }
+      allow read: if isSignedIn() && isFriend();
+      allow create: if isSignedIn() && (incoming().user1Id == request.auth.uid || incoming().user2Id == request.auth.uid);
+      allow delete: if isSignedIn() && isFriend();
+    }
+
+    // Groups (Servers)
+    match /groups/{groupId} {
+      allow read: if isSignedIn(); // For joining
+      allow create: if isSignedIn() && incoming().ownerId == request.auth.uid;
+      allow update: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+
+    // Group Members
+    match /groups/{groupId}/members/{memberId} {
+      // Need a way to read if user is in group
+      allow read: if isSignedIn(); 
+      allow create: if isSignedIn(); // simplified: can join if authenticated
+      allow update: if isSignedIn() && existing().userId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid; 
+    }
+
+    // Categories
+    match /groups/{groupId}/categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn(); // In prod, check if request.auth.uid is admin of group
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // Channels
+    match /groups/{groupId}/channels/{channelId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // Messages
+    match /channels/{channelId}/messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().senderId == request.auth.uid;
+      allow update: if isSignedIn() && existing().senderId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().senderId == request.auth.uid;
+    }
+    
+    // Direct Messages (Rooms)
+    match /direct_messages/{dmId} {
+      // DMs participants array contains uids. We can't easily check array inclusion in rules elegantly for dynamic paths unless we just use string.
+      // But we can check if dmId contains the user's uid since we can create dmId as sorted user uids joined by underscore.
+      allow read: if isSignedIn() && dmId.matches('.*' + request.auth.uid + '.*');
+      allow create: if isSignedIn() && dmId.matches('.*' + request.auth.uid + '.*');
+      allow update: if isSignedIn() && dmId.matches('.*' + request.auth.uid + '.*');
+    }
+
+    // DM Messages
+    match /direct_messages/{dmId}/messages/{messageId} {
+      allow read: if isSignedIn() && dmId.matches('.*' + request.auth.uid + '.*');
+      allow create: if isSignedIn() && dmId.matches('.*' + request.auth.uid + '.*') && incoming().senderId == request.auth.uid;
+      allow update: if isSignedIn() && existing().senderId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().senderId == request.auth.uid;
+    }
+
+    // WebRTC Rooms & Signals
+    match /webrtc_rooms/{roomId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+    match /webrtc_rooms/{roomId}/signals/{signalId} {
+      allow read, create, delete: if isSignedIn();
+    }
+  }
+}
